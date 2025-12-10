@@ -30,19 +30,19 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     switch (action) {
       case "start":
-        return await startAuction(auction);
+        return await startAuction(auction, request);
 
       case "pause":
-        return await pauseAuction(auction);
+        return await pauseAuction(auction, request);
 
       case "resume":
-        return await resumeAuction(auction);
+        return await resumeAuction(auction, request);
 
       case "stop":
-        return await stopAuction(auction);
+        return await stopAuction(auction, request);
 
       case "next-player":
-        return await setNextPlayer(auction);
+        return await setNextPlayer(auction, request);
 
       case "set-player":
         return await setCurrentPlayer(auction, playerId);
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         return await setCurrentPlayer(auction, playerId);
 
       case "skip-player":
-        return await skipCurrentPlayer(auction);
+        return await skipCurrentPlayer(auction, request);
 
       case "shuffle":
         return await shuffleQueue(auction);
@@ -179,7 +179,7 @@ async function buildPopulatedAuctionResponse(auctionDoc: any) {
   return populatedAuction;
 }
 
-async function startAuction(auction: any) {
+async function startAuction(auction: any, request: NextRequest) {
   if (auction.status !== "upcoming") {
     return NextResponse.json(
       { success: false, error: "Can only start upcoming auctions" },
@@ -216,7 +216,19 @@ async function startAuction(auction: any) {
 
   await auction.save();
   
-  (process as NodeJS.EventEmitter).emit('auction_started', { auctionId: auction._id.toString() });
+  // Send WebSocket event
+  try {
+    await fetch(`${request.nextUrl.origin}/api/websocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'auction_started',
+        data: { auctionId: auction._id.toString() }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send WebSocket event:', error);
+  }
 
   const populatedAuction = await buildPopulatedAuctionResponse(auction);
 
@@ -227,7 +239,7 @@ async function startAuction(auction: any) {
   });
 }
 
-async function pauseAuction(auction: any) {
+async function pauseAuction(auction: any, request: NextRequest) {
   if (auction.status !== "live") {
     return NextResponse.json(
       { success: false, error: "Can only pause live auctions" },
@@ -239,7 +251,19 @@ async function pauseAuction(auction: any) {
   await auction.save();
 
   // Emit WebSocket event for real-time updates
-  (process as NodeJS.EventEmitter).emit('auction_paused', { auctionId: auction._id.toString() });
+  // Send WebSocket event
+  try {
+    await fetch(`${request.nextUrl.origin}/api/websocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'auction_paused',
+        data: { auctionId: auction._id.toString() }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send WebSocket event:', error);
+  }
 
   const populatedAuction = await buildPopulatedAuctionResponse(auction);
 
@@ -250,7 +274,7 @@ async function pauseAuction(auction: any) {
   });
 }
 
-async function resumeAuction(auction: any) {
+async function resumeAuction(auction: any, request: NextRequest) {
   if (auction.status !== "paused") {
     return NextResponse.json(
       { success: false, error: "Can only resume paused auctions" },
@@ -261,7 +285,19 @@ async function resumeAuction(auction: any) {
   auction.status = "live";
   await auction.save();
   // Emit WebSocket event for real-time updates
-  (process as NodeJS.EventEmitter).emit('auction_resumed', { auctionId: auction._id.toString() });
+  // Send WebSocket event
+  try {
+    await fetch(`${request.nextUrl.origin}/api/websocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'auction_resumed',
+        data: { auctionId: auction._id.toString() }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send WebSocket event:', error);
+  }
 
   const populatedAuction = await buildPopulatedAuctionResponse(auction);
 
@@ -272,7 +308,7 @@ async function resumeAuction(auction: any) {
   });
 }
 
-async function stopAuction(auction: any) {
+async function stopAuction(auction: any, request: NextRequest) {
   if (!["live", "paused"].includes(auction.status)) {
     return NextResponse.json(
       { success: false, error: "Can only stop live or paused auctions" },
@@ -290,7 +326,19 @@ async function stopAuction(auction: any) {
 
   await auction.save();
   
-  (process as NodeJS.EventEmitter).emit('auction_ended', { auctionId: auction._id.toString() });
+  // Send WebSocket event
+  try {
+    await fetch(`${request.nextUrl.origin}/api/websocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'auction_ended',
+        data: { auctionId: auction._id.toString() }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send WebSocket event:', error);
+  }
   
   const populatedAuction = await buildPopulatedAuctionResponse(auction);
 
@@ -301,7 +349,7 @@ async function stopAuction(auction: any) {
   });
 }
 
-async function setNextPlayer(auction: any) {
+async function setNextPlayer(auction: any, request: NextRequest) {
   if (auction.status !== "live") {
     return NextResponse.json(
       { success: false, error: "Auction must be live to set next player" },
@@ -430,7 +478,19 @@ async function setNextPlayer(auction: any) {
   await auction.save();
   
   if (auction.status === "completed") {
-    (process as NodeJS.EventEmitter).emit('auction_ended', { auctionId: auction._id.toString() });
+    // Send WebSocket event
+  try {
+    await fetch(`${request.nextUrl.origin}/api/websocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'auction_ended',
+        data: { auctionId: auction._id.toString() }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send WebSocket event:', error);
+  }
   } else {
     (process as NodeJS.EventEmitter).emit('player_changed', { auctionId: auction._id.toString() });
   }
@@ -539,7 +599,7 @@ async function shuffleQueue(auction: any) {
   });
 }
 
-async function skipCurrentPlayer(auction: any) {
+async function skipCurrentPlayer(auction: any, request: NextRequest) {
   if (auction.status !== "live") {
     return NextResponse.json(
       { success: false, error: "Auction must be live to skip player" },
@@ -571,7 +631,7 @@ async function skipCurrentPlayer(auction: any) {
   auction.unsoldPlayers += 1;
 
   // Remove from queue and set next player
-  return await setNextPlayer(auction);
+  return await setNextPlayer(auction, request);
 }
 
 async function resetAuction(auction: any) {

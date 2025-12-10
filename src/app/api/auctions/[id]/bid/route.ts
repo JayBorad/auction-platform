@@ -179,17 +179,35 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     await auction.save();
 
-    // Emit WebSocket event for real-time bid updates
-    (process as NodeJS.EventEmitter).emit('auction_bid_placed', {
-      auctionId: id,
-      bid: newBid,
-      bidderName: bidderTeam.name,
-      amount: amount,
-      playerName: auction.currentPlayer.name
-    });
+    // Send WebSocket events for real-time bid updates
+    try {
+      await fetch(`${new URL(request.url).origin}/api/websocket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'auction_bid_placed',
+          data: {
+            auctionId: id,
+            bid: newBid,
+            bidderName: bidderTeam.name,
+            amount: amount,
+            playerName: auction.currentPlayer.name
+          }
+        })
+      });
 
-    // Reset timer to 30 seconds for new bid
-    (process as NodeJS.EventEmitter).emit('timer_sync', { auctionId: id, timeRemaining: 30 });
+      // Reset timer to 30 seconds for new bid
+      await fetch(`${new URL(request.url).origin}/api/websocket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'timer_sync',
+          data: { auctionId: id, timeRemaining: 30 }
+        })
+      });
+    } catch (error) {
+      console.error('Failed to send WebSocket events:', error);
+    }
 
     // If admin requested finalize, immediately sell player and move to next
     if (finalize && auction.currentPlayer) {
@@ -263,21 +281,33 @@ export async function POST(request: NextRequest, { params }: Params) {
       const soldPlayer: any = await mongoose.model('Player').findById(soldPlayerId).select('name role image').lean();
       const winningTeam: any = await Team.findById(bidder).select('name logo').lean();
       
-      (process as NodeJS.EventEmitter).emit('player_sold', {
-        auctionId: id,
-        player: {
-          _id: soldPlayer?._id,
-          name: soldPlayer?.name,
-          role: soldPlayer?.role,
-          image: soldPlayer?.image
-        },
-        team: {
-          _id: winningTeam?._id,
-          name: winningTeam?.name,
-          logo: winningTeam?.logo
-        },
-        amount: amount
-      });
+      // Send WebSocket event for player sold
+      try {
+        await fetch(`${new URL(request.url).origin}/api/websocket`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'player_sold',
+            data: {
+              auctionId: id,
+              player: {
+                _id: soldPlayer?._id,
+                name: soldPlayer?.name,
+                role: soldPlayer?.role,
+                image: soldPlayer?.image
+              },
+              team: {
+                _id: winningTeam?._id,
+                name: winningTeam?.name,
+                logo: winningTeam?.logo
+              },
+              amount: amount
+            }
+          })
+        });
+      } catch (error) {
+        console.error('Failed to send player_sold WebSocket event:', error);
+      }
     }
 
     // Populate the new bid for response

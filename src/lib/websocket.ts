@@ -28,8 +28,8 @@ class WebSocketManager {
   connect(userId?: string, role?: string) {
     if (this.socket?.connected) return this.socket;
 
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-    const socketUrl = `${baseUrl}/api/socket`;
+    // Connect directly to the Socket.IO server (Render/Vercel/other)
+    const socketUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 
     this.socket = io(socketUrl, {
       auth: {

@@ -1,0 +1,19 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: General rules and behavior for this project
+globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+alwaysApply: false
+---
+- This project is a real-time cricket auction web app using Next.js, Socket.IO, MongoDB, and Shadcn UI
+- Follow modular, scalable, and clean architecture principles
+- Use consistent code conventions and avoid unnecessary abstractions
+- Work only on the steps assigned to you
+- After finishing a step, mark it as completed in @history.md and stop
+- Maintain proper folder structure and avoid creating unnecessary files
+- Always propagate schema/type changes throughout all affected files to prevent runtime errors
+- Use Yarn for dependency management
+- Ensure real-time logic with Socket.IO is clean, modular, and doesn’t block the event loop

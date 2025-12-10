@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: Task tracking and control system
+globs: @history.md
+alwaysApply: false
+---
+- Record every completed step in a bullet format with timestamp
+- Do not move on to the next step until explicitly told to
+- If a file is changed in multiple places (like a schema), log that too
+- Mark breaking changes and reason for them clearly
+- Sync with developer instructions via step-by-step notes
+- All tasks must be marked complete before continuing
+

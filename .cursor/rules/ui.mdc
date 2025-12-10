@@ -1,0 +1,29 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+---
+
+### `ui.mdc`
+```md
+---
+description: UI Best practices for all pages
+globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+alwaysApply: false
+---
+
+- Use Shadcn UI components with proper composition and customization.
+- Leverage Radix UI primitives for accessible interactive elements.
+- Maintain consistent theming with global components and color tokens.
+- Keep UI minimal, clean, and black-and-white for now.
+- Follow consistent spacing and layout using Tailwind’s scale.
+- Use Tailwind’s mobile-first responsive approach.
+- Add dark mode support via Tailwind’s `dark:` variants.
+- Ensure accessibility (WCAG guidelines) in all components.
+- Style using modular and reusable Tailwind utility classes.
+- Optimize component bundle size via dynamic loading and code-splitting.
+- Avoid inline styles; use utility-first Tailwind CSS classes.
+- Ensure adequate spacing, margins, and padding for all components.
+- Maintain consistent use of border radius, shadows, and typography.

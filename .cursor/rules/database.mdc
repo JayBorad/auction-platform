@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: MongoDB and Mongoose schema best practices
+globs: **/*.ts
+alwaysApply: false
+---
+- Use Mongoose for defining data schemas and MongoDB access
+- Always define types/interfaces for schemas
+- Keep all database models inside `/lib/models` or `/db/models`
+- Separate schema definition, model creation, and export
+- Use enums and `ref` to handle relational-like structure when required
+- Use timestamps and indexes in schemas where helpful
+- Avoid unnecessary nesting in schema unless it reflects real structure
+- Sanitize and validate input on both frontend and backend
+- Prevent injection attacks and unsafe queries
+- Use `.lean()` in read-only queries for better performance
+- Never expose full Mongo documents to frontend – always map to DTOs or public shapes
+- Handle errors using try/catch and return proper responses in actions

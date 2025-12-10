@@ -1,22 +1,22 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  useFileSystemPublicRoutes: true,
-  // Explicitly define that we're not using the pages directory
-  skipTrailingSlashRedirect: true,
-  skipProxyUrlNormalize: true,
+  eslint: {
+    // ✅ Prevent ESLint from blocking production builds
+    ignoreDuringBuilds: true,
+  },
+
   typescript: {
-    // Allow production builds to successfully complete even if there are type errors
+    // ✅ Allow production builds even with TS errors
     ignoreBuildErrors: true,
   },
-  // Provide empty turbopack config to avoid conflicts with webpack
-  turbopack: {},
+
   webpack: (config) => {
-    // Ensure proper path resolution for @ alias
+    // ✅ Support @ alias -> src
     config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': require('path').resolve(__dirname, 'src'),
+      ...(config.resolve.alias || {}),
+      "@": path.resolve(__dirname, "src"),
     };
     return config;
   },

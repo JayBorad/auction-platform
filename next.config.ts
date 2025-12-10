@@ -5,15 +5,13 @@ const nextConfig: NextConfig = {
   useFileSystemPublicRoutes: true,
   // Explicitly define that we're not using the pages directory
   skipTrailingSlashRedirect: true,
-  skipMiddlewareUrlNormalize: true,
-  eslint: {
-    // Allow production builds to successfully complete even if there are ESLint errors
-    ignoreDuringBuilds: true,
-  },
+  skipProxyUrlNormalize: true,
   typescript: {
     // Allow production builds to successfully complete even if there are type errors
     ignoreBuildErrors: true,
   },
+  // Provide empty turbopack config to avoid conflicts with webpack
+  turbopack: {},
   webpack: (config) => {
     // Ensure proper path resolution for @ alias
     config.resolve.alias = {

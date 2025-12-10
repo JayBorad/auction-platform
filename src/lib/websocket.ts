@@ -28,7 +28,10 @@ class WebSocketManager {
   connect(userId?: string, role?: string) {
     if (this.socket?.connected) return this.socket;
 
-    this.socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000', {
+    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    const socketUrl = `${baseUrl}/api/socket`;
+
+    this.socket = io(socketUrl, {
       auth: {
         userId
       },

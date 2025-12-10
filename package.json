@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "next dev",
     "build": "next build",
-    "build:render": "yarn install && next build",
-    "start": "NODE_ENV=production node server.js",
+    "build:render": "npm install && next build",
+    "start": "next start",
     "next-dev": "next dev",
     "lint": "next lint"
   },

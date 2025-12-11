@@ -3,15 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useWebSocket } from '@/context/WebSocketContext';
 import { UserRole, ROLE_PATHS } from '@/constants/roles';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import WebSocketManager from '@/lib/websocket';
 
-interface ConnectedUser {
-  role: string;
-  timestamp: Date;
-}
 
 interface RoleWrapperProps {
   allowedRoles: string[];
@@ -26,12 +22,10 @@ const RoleWrapper = ({
 }: RoleWrapperProps) => {
   const router = useRouter();
   const { user, status } = useAuth();
+  const { isConnected, connectedUsers } = useWebSocket();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
   const [showPopup, setShowPopup] = useState(true);
-  const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
-  const [wsManager] = useState(() => new WebSocketManager());
 
   useEffect(() => {
     // Still loading session
@@ -62,28 +56,11 @@ const RoleWrapper = ({
     if (status === 'authenticated' && user) {
       if (!allowedRoles.includes(user.role)) {
         router.replace('/');
-      } else {
-        // Connect to WebSocket when authenticated
-        const socket = wsManager.connect(user.id, user.role);
-        
-        // Listen for connection status
-        socket?.on('connect', () => setIsConnected(true));
-        socket?.on('disconnect', () => setIsConnected(false));
-        
-        // Listen for connected users updates
-        wsManager.onConnectedUsers((users) => {
-          setConnectedUsers(users);
-        });
       }
     } else if (status === 'unauthenticated') {
       router.replace('/login');
     }
-
-    return () => {
-      // Cleanup socket connection
-      wsManager.disconnect();
-    };
-  }, [user, status, allowedRoles, router, wsManager]);
+  }, [user, status, allowedRoles, router]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-[60vh]">

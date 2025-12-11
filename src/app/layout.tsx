@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
 import AuthContextProvider from "@/context/AuthContext";
+import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/toast";
 
 const nunito = Nunito({ 
@@ -24,10 +25,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="dark">
       <body suppressHydrationWarning className={`${nunito.variable} font-sans bg-gray-950 text-gray-200 min-h-screen`}>
         <AuthContextProvider>
-          <main>
-            {children}
-          </main>
-          <Toaster />
+          <WebSocketProvider>
+            <main>
+              {children}
+            </main>
+            <Toaster />
+          </WebSocketProvider>
         </AuthContextProvider>
       </body>
     </html>

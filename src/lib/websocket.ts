@@ -24,8 +24,26 @@ class WebSocketManager {
   private maxReconnectAttempts = 5;
   private testMessageCallbacks: ((message: TestMessage) => void)[] = [];
   private connectedUsersCallbacks: ((users: ConnectedUser[]) => void)[] = [];
+  private static instance: WebSocketManager | null = null;
+  private currentUserId: string | null = null;
+  private currentRole: string | null = null;
+
+  static getInstance(): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      WebSocketManager.instance = new WebSocketManager();
+    }
+    return WebSocketManager.instance;
+  }
 
   connect(userId?: string, role?: string) {
+    // If already connected with the same user, return existing socket
+    if (this.socket?.connected && this.currentUserId === userId && this.currentRole === role) {
+      return this.socket;
+    }
+
+    // Store current user info
+    this.currentUserId = userId || null;
+    this.currentRole = role || null;
     if (this.socket?.connected) return this.socket;
 
     // Connect directly to the Socket.IO server (Render/Vercel/other)
@@ -43,7 +61,7 @@ class WebSocketManager {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      forceNew: true
+      forceNew: false  // Don't force new connection, reuse existing
     });
 
     this.socket.on('connect', () => {

@@ -22,38 +22,90 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
   const [wsManager] = useState(() => WebSocketManager.getInstance());
+  const [connectionKey, setConnectionKey] = useState<string | null>(null);
+  const [reconnectTimeout, setReconnectTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (status === 'authenticated' && user) {
-      // Connect to WebSocket
-      const socket = wsManager.connect(user.id, user.role);
+      const userKey = `${user.id}-${user.role}`;
 
-      // Listen for connection status
-      socket?.on('connect', () => setIsConnected(true));
-      socket?.on('disconnect', () => setIsConnected(false));
+      // Only reconnect if user changed
+      if (connectionKey !== userKey) {
+        console.log('🔄 WebSocket: Establishing connection for user:', userKey);
 
-      // Listen for connected users updates
-      wsManager.onConnectedUsers((users) => {
-        setConnectedUsers(users);
-      });
+        // Connect to WebSocket
+        const socket = wsManager.connect(user.id, user.role);
 
-      // Cleanup function to remove event listeners when component unmounts
-      return () => {
-        socket?.off('connect');
-        socket?.off('disconnect');
-        // Don't disconnect the socket here - let it persist across route changes
-      };
+        // Listen for connection status
+        const handleConnect = () => {
+          console.log('✅ WebSocket: Connected');
+          setIsConnected(true);
+        };
+
+        const handleDisconnect = (reason: string) => {
+          console.log('❌ WebSocket: Disconnected -', reason);
+          setIsConnected(false);
+
+          // Clear any existing reconnect timeout
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            setReconnectTimeout(null);
+          }
+
+          // Auto-reconnect logic for unexpected disconnects
+          if (reason === 'io server disconnect' || reason === 'io client disconnect' || reason === 'transport close') {
+            console.log('🔄 WebSocket: Scheduling reconnection in 2 seconds...');
+            const timeout = setTimeout(() => {
+              if (status === 'authenticated' && user && connectionKey === `${user.id}-${user.role}`) {
+                console.log('🔄 WebSocket: Attempting reconnection...');
+                wsManager.connect(user.id, user.role);
+              }
+            }, 2000);
+            setReconnectTimeout(timeout);
+          }
+        };
+
+        socket?.on('connect', handleConnect);
+        socket?.on('disconnect', handleDisconnect);
+
+        // Listen for connected users updates
+        wsManager.onConnectedUsers((users) => {
+          setConnectedUsers(users);
+        });
+
+        setConnectionKey(userKey);
+
+        // Cleanup function to remove event listeners when component unmounts
+        return () => {
+          socket?.off('connect', handleConnect);
+          socket?.off('disconnect', handleDisconnect);
+          // Clear any pending reconnect timeout
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            setReconnectTimeout(null);
+          }
+          // Don't disconnect the socket here - let it persist across route changes
+        };
+      }
+    } else if (status === 'unauthenticated') {
+      setConnectionKey(null);
     }
-  }, [user, status, wsManager]);
+  }, [user, status, wsManager, connectionKey]);
 
   // Only disconnect when the user logs out completely
   useEffect(() => {
     if (status === 'unauthenticated') {
+      // Clear any pending reconnect timeout
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        setReconnectTimeout(null);
+      }
       wsManager.disconnect();
       setIsConnected(false);
       setConnectedUsers([]);
+      setConnectionKey(null);
     }
-  }, [status, wsManager]);
+  }, [status, wsManager, reconnectTimeout]);
 
   return (
     <WebSocketContext.Provider value={{

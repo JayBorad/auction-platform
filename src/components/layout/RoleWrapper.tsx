@@ -127,11 +127,16 @@ const RoleWrapper = ({
             <div className="flex items-center gap-2 mt-1">
               <div className={cn(
                 "w-2 h-2 rounded-full",
-                isConnected ? "bg-green-500" : "bg-red-500"
+                isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
               )} />
               <span className="text-xs text-gray-400">
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
+              {process.env.NODE_ENV === 'development' && (
+                <span className="text-xs text-gray-500">
+                  WS: {process.env.NEXT_PUBLIC_WS_URL}
+                </span>
+              )}
             </div>
           </div>
         </div>

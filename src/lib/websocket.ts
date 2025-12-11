@@ -22,6 +22,7 @@ class WebSocketManager {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
   private testMessageCallbacks: ((message: TestMessage) => void)[] = [];
   private connectedUsersCallbacks: ((users: ConnectedUser[]) => void)[] = [];
   private static instance: WebSocketManager | null = null;
@@ -38,13 +39,26 @@ class WebSocketManager {
   connect(userId?: string, role?: string) {
     // If already connected with the same user, return existing socket
     if (this.socket?.connected && this.currentUserId === userId && this.currentRole === role) {
+      console.log('🔄 WebSocket: Reusing existing connection for same user');
+      return this.socket;
+    }
+
+    // If socket exists but user changed, disconnect first
+    if (this.socket?.connected && (this.currentUserId !== userId || this.currentRole !== role)) {
+      console.log('🔄 WebSocket: User changed, disconnecting old connection');
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    // If already connected with same user, return existing socket
+    if (this.socket?.connected) {
+      console.log('🔄 WebSocket: Reusing existing connection');
       return this.socket;
     }
 
     // Store current user info
     this.currentUserId = userId || null;
     this.currentRole = role || null;
-    if (this.socket?.connected) return this.socket;
 
     // Connect directly to the Socket.IO server (Render/Vercel/other)
     const socketUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
@@ -65,15 +79,26 @@ class WebSocketManager {
     });
 
     this.socket.on('connect', () => {
-      console.log('WebSocket connected successfully');
+      console.log('✅ WebSocket connected successfully');
       this.reconnectAttempts = 0;
-      
+
+      // Start heartbeat
+      this.startHeartbeat();
+
       // Request current connected users list
       this.socket?.emit('get_connected_users');
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
+      console.log('❌ WebSocket disconnected:', reason);
+      this.stopHeartbeat();
+
+      // Don't automatically try to reconnect here - let the context handle it
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      this.handleReconnect();
     });
 
     this.socket.on('connect_error', (error) => {
@@ -95,9 +120,29 @@ class WebSocketManager {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+    }
+    this.currentUserId = null;
+    this.currentRole = null;
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat(); // Clear any existing heartbeat
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        // Send a ping to keep connection alive
+        this.socket.emit('ping');
+      }
+    }, 30000); // Every 30 seconds
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 

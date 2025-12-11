@@ -145,8 +145,13 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+  // Handle ping for connection health check
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('Client disconnected:', socket.id, 'Reason:', reason);
 
     // Remove user from connected users
     connectedUsers.delete(socket.id);

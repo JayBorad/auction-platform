@@ -49,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import WebSocketManager from "@/lib/websocket";
+import { useWebSocket } from "@/context/WebSocketContext";
 import { amountToLakh, lakhToAmount, formatCurrency } from '@/lib/format';
 
 interface Player {
@@ -143,13 +143,11 @@ export default function ModeratorAuctionDetailsPage() {
   const [hammerCount, setHammerCount] = useState(0);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [lastPromptedProcessedCount, setLastPromptedProcessedCount] = useState(0);
-
-  const wsManager = new WebSocketManager();
+  const { wsManager } = useWebSocket();
 
   useEffect(() => {
     if (!auctionId) return;
-  
-    wsManager.connect();
+
     wsManager.joinAuction(auctionId);
   
     const handleAuctionEvent = (event: any) => {

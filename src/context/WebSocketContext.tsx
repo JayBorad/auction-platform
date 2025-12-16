@@ -13,15 +13,17 @@ interface WebSocketContextType {
   isConnected: boolean;
   connectedUsers: ConnectedUser[];
   wsManager: WebSocketManager;
+  connectionInfo: any;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { user, status } = useAuth();
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
   const [wsManager] = useState(() => WebSocketManager.getInstance());
+  const [isConnected, setIsConnected] = useState(() => wsManager.isConnected);
+  const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
+  const [connectionInfo, setConnectionInfo] = useState<any>(() => wsManager.getConnectionInfo());
   const [connectionKey, setConnectionKey] = useState<string | null>(null);
   const [reconnectTimeout, setReconnectTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -35,60 +37,45 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
         // Connect to WebSocket
         const socket = wsManager.connect(user.id, user.role);
-
-        // Listen for connection status
-        const handleConnect = () => {
-          console.log('✅ WebSocket: Connected');
-          setIsConnected(true);
-        };
-
-        const handleDisconnect = (reason: string) => {
-          console.log('❌ WebSocket: Disconnected -', reason);
-          setIsConnected(false);
-
-          // Clear any existing reconnect timeout
-          if (reconnectTimeout) {
-            clearTimeout(reconnectTimeout);
-            setReconnectTimeout(null);
-          }
-
-          // Auto-reconnect logic for unexpected disconnects
-          if (reason === 'io server disconnect' || reason === 'io client disconnect' || reason === 'transport close') {
-            console.log('🔄 WebSocket: Scheduling reconnection in 2 seconds...');
-            const timeout = setTimeout(() => {
-              if (status === 'authenticated' && user && connectionKey === `${user.id}-${user.role}`) {
-                console.log('🔄 WebSocket: Attempting reconnection...');
-                wsManager.connect(user.id, user.role);
-              }
-            }, 2000);
-            setReconnectTimeout(timeout);
-          }
-        };
-
-        socket?.on('connect', handleConnect);
-        socket?.on('disconnect', handleDisconnect);
-
-        // Listen for connected users updates
-        wsManager.onConnectedUsers((users) => {
-          setConnectedUsers(users);
-        });
-
         setConnectionKey(userKey);
-
-        // Cleanup function to remove event listeners when component unmounts
-        return () => {
-          socket?.off('connect', handleConnect);
-          socket?.off('disconnect', handleDisconnect);
-          // Clear any pending reconnect timeout
-          if (reconnectTimeout) {
-            clearTimeout(reconnectTimeout);
-            setReconnectTimeout(null);
-          }
-          // Don't disconnect the socket here - let it persist across route changes
-        };
       }
+
+      // Always set up callbacks when user is authenticated
+      // (moved outside the user change check so it runs every time)
+      const cleanupConnectionStatus = wsManager.onConnectionStatus((connected) => {
+        console.log('🔄 WebSocket: Connection status changed:', connected, 'User:', user?.id, 'Role:', user?.role);
+        setIsConnected(connected);
+        setConnectionInfo(wsManager.getConnectionInfo());
+      });
+
+      // Listen for auction updates (both WebSocket and polling)
+      const cleanupAuctionUpdates = wsManager.onAuctionUpdate((update) => {
+        // This can be used by components that need to listen to auction updates globally
+        console.log('📡 Auction update received:', update.type, update.auctionId);
+      });
+
+      // Listen for connected users updates
+      const cleanupConnectedUsers = wsManager.onConnectedUsers((users) => {
+        setConnectedUsers(users);
+      });
+
+      // Cleanup function to remove event listeners when component unmounts or user changes
+      return () => {
+        cleanupConnectionStatus();
+        cleanupAuctionUpdates();
+        cleanupConnectedUsers();
+        // Clear any pending reconnect timeout
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          setReconnectTimeout(null);
+        }
+        // Don't disconnect the socket here - let it persist across route changes
+      };
     } else if (status === 'unauthenticated') {
       setConnectionKey(null);
+      setIsConnected(false);
+      setConnectedUsers([]);
+      setConnectionInfo(null);
     }
   }, [user, status, wsManager, connectionKey]);
 
@@ -104,6 +91,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       setConnectedUsers([]);
       setConnectionKey(null);
+      setConnectionInfo(null);
     }
   }, [status, wsManager, reconnectTimeout]);
 
@@ -111,7 +99,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     <WebSocketContext.Provider value={{
       isConnected,
       connectedUsers,
-      wsManager
+      wsManager,
+      connectionInfo
     }}>
       {children}
     </WebSocketContext.Provider>

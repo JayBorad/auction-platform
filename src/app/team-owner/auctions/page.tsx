@@ -30,7 +30,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format';
 import { useDebounce } from '@/hooks/useDebounce';
-import WebSocketManager from '@/lib/websocket';
+import { useWebSocket } from '@/context/WebSocketContext';
 
 interface Auction {
   _id: string;
@@ -75,12 +75,11 @@ export default function TeamOwnerAuctionsPage() {
   const [totalItems, setTotalItems] = useState(0);
 
   const router = useRouter();
-  const wsManager = new WebSocketManager();
+  const { wsManager } = useWebSocket();
 
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
 
   useEffect(() => {
-    wsManager.connect();
 
     const handleAuctionStatusChange = (event: any) => {
       if (event.type && ['auction_started', 'auction_paused', 'auction_resumed', 'auction_ended'].includes(event.type)) {

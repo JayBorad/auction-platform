@@ -22,10 +22,23 @@ const RoleWrapper = ({
 }: RoleWrapperProps) => {
   const router = useRouter();
   const { user, status } = useAuth();
-  const { isConnected, connectedUsers } = useWebSocket();
+  const { isConnected, connectedUsers, connectionInfo, wsManager } = useWebSocket();
+
+  // Additional check: also verify connection through WebSocket manager directly
+  const actualConnected = isConnected || wsManager.isConnected;
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(true);
+
+  // Debug connection status
+  useEffect(() => {
+    console.log('🔍 RoleWrapper: Connection status - isConnected:', isConnected, 'actualConnected:', actualConnected, 'connectionInfo:', connectionInfo);
+  }, [isConnected, actualConnected, connectionInfo]);
+
+  // Log on mount
+  useEffect(() => {
+    console.log('🔍 RoleWrapper: Component mounted, initial connection status:', { isConnected, actualConnected, connectionInfo });
+  }, []); // Empty dependency array for mount only
 
   useEffect(() => {
     // Still loading session
@@ -127,15 +140,27 @@ const RoleWrapper = ({
             <div className="flex items-center gap-2 mt-1">
               <div className={cn(
                 "w-2 h-2 rounded-full",
-                isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+                actualConnected ? "bg-green-500 animate-pulse" :
+                connectionInfo?.usePollingFallback ? "bg-yellow-500 animate-pulse" :
+                "bg-red-500"
               )} />
               <span className="text-xs text-gray-400">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {actualConnected ? 'WebSocket' :
+                 connectionInfo?.usePollingFallback ? 'Polling Fallback' :
+                 'Disconnected'}
               </span>
               {process.env.NODE_ENV === 'development' && (
-                <span className="text-xs text-gray-500">
-                  WS: {process.env.NEXT_PUBLIC_WS_URL}
-                </span>
+                <div className="text-xs text-gray-500 flex flex-col">
+                  <span>URL: {process.env.NEXT_PUBLIC_WS_URL}</span>
+                  {connectionInfo && (
+                    <div className="text-xs space-y-1">
+                      <span>Connected: {connectionInfo.connected ? 'Yes' : 'No'}</span>
+                      <span>User: {connectionInfo.userId || 'None'}</span>
+                      <span>Polling: {connectionInfo.usePollingFallback ? 'Yes' : 'No'}</span>
+                      <span>HB: {new Date(connectionInfo.lastHeartbeat).toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

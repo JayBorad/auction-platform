@@ -36,11 +36,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import WebSocketTest from '@/components/shared/WebSocketTest';
-import WebSocketManager from '@/lib/websocket';
+import { useWebSocket } from '@/context/WebSocketContext';
 import { amountToLakh, lakhToAmount, formatCurrency } from '@/lib/format';
 import PlayerSoldModal from '@/components/shared/PlayerSoldModal';
-
-const wsManager = new WebSocketManager();
 
 interface Player {
   _id: string;
@@ -122,6 +120,7 @@ export default function TeamOwnerAuctionDetailsPage() {
   const [activeTab, setActiveTab] = useState('live');
   const [bidAmount, setBidAmount] = useState('');
   const [isBidding, setIsBidding] = useState(false);
+  const { wsManager } = useWebSocket();
 
   // Add myTeam state
   const [myTeam, setMyTeam] = useState<Team | null>(null);
@@ -228,7 +227,6 @@ export default function TeamOwnerAuctionDetailsPage() {
   useEffect(() => {
     if (!auctionId) return;
 
-    wsManager.connect();
     wsManager.joinAuction(auctionId);
 
     const handleAuctionEvent = (event: any) => {
